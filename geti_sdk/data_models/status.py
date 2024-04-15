@@ -32,7 +32,7 @@ class StatusSummary:
     """
 
     progress: float
-    time_remaining: Optional[float] = None  # Deprecated in Geti v1.16
+    time_remaining: float
     message: Optional[str] = None
 
     def __attrs_post_init__(self):

@@ -1,18 +1,16 @@
-FROM python:3.8-bullseye
+FROM python:3.8
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3-opencv libgl1
+RUN apt-get update && apt-get install -y python3-opencv
+RUN pip install opencv-python
 
-RUN useradd --create-home --user-group --shell /bin/bash --no-log-init getisdk
-USER getisdk
+WORKDIR /app
 
-WORKDIR /home/getisdk
-ENV HOME /home/getisdk
-ENV PATH="$PATH:$HOME/.local/bin"
+COPY requirements/requirements.txt requirements.txt
 
 RUN python -m pip install --upgrade pip
-RUN python -m pip install opencv-python
+RUN pip install -r requirements.txt
 
-COPY --chown=getisdk:getisdk . $HOME/geti-sdk
-RUN python -m pip install $HOME/geti-sdk
+COPY . .
+RUN pip install .
 
-ENTRYPOINT /bin/bash
+CMD /bin/bash

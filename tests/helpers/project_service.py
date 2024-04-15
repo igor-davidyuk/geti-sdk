@@ -164,7 +164,6 @@ class ProjectService:
                         number_of_images_to_annotate=n_images,
                         enable_auto_train=False,
                         upload_videos=True,
-                        max_threads=1,
                     )
                 else:
                     project = self.geti.create_task_chain_project_from_dataset(
@@ -175,7 +174,6 @@ class ProjectService:
                         number_of_images_to_upload=n_images,
                         number_of_images_to_annotate=n_images,
                         enable_auto_train=False,
-                        max_threads=1,
                     )
         else:
             raise ValueError(
@@ -328,7 +326,8 @@ class ProjectService:
         if not self.has_project:
             return False
         with self.vcr_context(f"{self.project.name}_is_training.{CASSETTE_EXTENSION}"):
-            return self.training_client.is_training()
+            jobs = self.training_client.get_jobs(project_only=True)
+            return len(jobs) > 0
 
     def delete_project(self):
         """Deletes the project from the server"""
@@ -374,12 +373,9 @@ class ProjectService:
                     path_to_folder=data_path,
                     image_names=annotation_reader_1.get_all_image_names(),
                     n_images=n_images,
-                    max_threads=1,
                 )
             else:
-                images = self.image_client.upload_folder(
-                    data_path, n_images=n_images, max_threads=1
-                )
+                images = self.image_client.upload_folder(data_path, n_images=n_images)
 
             if n_images < len(images) and n_images != -1:
                 images = images[:n_images]

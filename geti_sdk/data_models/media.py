@@ -210,15 +210,6 @@ class Image(MediaItem):
     """
 
     media_information: ImageInformation = attr.field(kw_only=True)
-    annotation_scene_id: Optional[str] = attr.field(
-        kw_only=True, default=None, repr=False
-    )  # Added in Geti v 1.16
-    roi_id: Optional[str] = attr.field(
-        kw_only=True, default=None, repr=False
-    )  # Added in Geti v 1.16
-    editor_name: Optional[str] = attr.field(
-        kw_only=True, default=None, repr=False
-    )  # Added in Geti v 1.16
 
     def __attrs_post_init__(self):
         """
@@ -283,7 +274,6 @@ class Video(MediaItem):
     """
 
     media_information: VideoInformation = attr.field(kw_only=True)
-    matched_frames: Optional[int] = attr.field(kw_only=True, default=None, repr=False)
 
     def __attrs_post_init__(self):
         """

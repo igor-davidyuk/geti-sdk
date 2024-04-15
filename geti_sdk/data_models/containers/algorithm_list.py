@@ -99,7 +99,7 @@ class AlgorithmList(UserList):
         summary_str = "Algorithms:\n"
         for algorithm in self.data:
             summary_str += (
-                f"  Name: {algorithm.name}\n"
+                f"  Name: {algorithm.algorithm_name}\n"
                 f"    Task type: {algorithm.task_type}\n"
                 f"    Model size: {algorithm.model_size}\n"
                 f"    Gigaflops: {algorithm.gigaflops}\n\n"
@@ -114,7 +114,7 @@ class AlgorithmList(UserList):
         :return: Algorithm holding the algorithm details
         """
         for algo in self.data:
-            if algo.name == name:
+            if algo.algorithm_name == name:
                 return algo
         raise ValueError(
             f"Algorithm named {name} was not found in the "
@@ -131,11 +131,4 @@ class AlgorithmList(UserList):
             task_type in the AlgorithmList
         :return: Default algorithm for the task
         """
-        task_algos = self.get_by_task_type(task_type=task_type)
-        default = [algo for algo in task_algos if algo.default_algorithm]
-        if len(default) == 1:
-            return default[0]
-        else:
-            # The old method used in Geti v1.8 and lower. Keep for backwards
-            # compatibility
-            return self.get_by_model_template(DEFAULT_ALGORITHMS[str(task_type)])
+        return self.get_by_model_template(DEFAULT_ALGORITHMS[str(task_type)])

@@ -1,6 +1,6 @@
 # noqa: D104
 
-# Copyright (C) 2024 Intel Corporation
+# Copyright (C) 2022 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 # and limitations under the License.
 
 
-from .constants import PARKING_LOT_VIDEO_HASH
 from .image import display_image_in_notebook, simulate_low_light_image
 from .upload import Uploader
 from .video import VideoPlayer
@@ -25,5 +24,4 @@ __all__ = [
     "display_image_in_notebook",
     "VideoPlayer",
     "Uploader",
-    "PARKING_LOT_VIDEO_HASH",
 ]

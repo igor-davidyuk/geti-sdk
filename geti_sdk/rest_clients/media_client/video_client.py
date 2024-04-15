@@ -14,7 +14,7 @@
 
 
 import os
-from datetime import datetime
+import tempfile
 from typing import Optional, Sequence, Union
 
 import cv2
@@ -79,10 +79,9 @@ class VideoClient(BaseMediaClient[Video]):
                     f"dimensions representing [frames, height, width, channels]. Got "
                     f"shape {video.shape}"
                 ) from error
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            video_path = f"temp_video_{timestamp}.avi"
+            file_out = tempfile.NamedTemporaryFile(suffix=".avi", delete=False)
             out = cv2.VideoWriter(
-                video_path,
+                file_out.name,
                 cv2.VideoWriter_fourcc("M", "J", "P", "G"),
                 1,
                 (frame_width, frame_height),
@@ -90,6 +89,7 @@ class VideoClient(BaseMediaClient[Video]):
             for frame in video[:, ...]:
                 out.write(frame)
             out.release()
+            video_path = file_out.name
             temporary_file_created = True
         else:
             raise TypeError(f"Invalid video type: {type(video)}.")
@@ -98,13 +98,8 @@ class VideoClient(BaseMediaClient[Video]):
         uploaded_video = MediaRESTConverter.from_dict(
             input_dict=video_dict, media_type=Video
         )
-        # Clean up temp file
-        if temporary_file_created:
-            # We do not keep the video file in case of uploading a numpy array representation.
-            # The intuition is that the user is responsible for managing the original video.
-            os.remove(video_path)
-        else:
-            uploaded_video._data = video_path
+        uploaded_video._data = video_path
+        uploaded_video._needs_tempfile_deletion = temporary_file_created
         return uploaded_video
 
     def upload_folder(
@@ -113,7 +108,6 @@ class VideoClient(BaseMediaClient[Video]):
         n_videos: int = -1,
         skip_if_filename_exists: bool = False,
         dataset: Optional[Dataset] = None,
-        max_threads: int = 5,
     ) -> MediaList[Video]:
         """
         Upload all videos in a folder to the project. Returns the mapping of video
@@ -126,8 +120,6 @@ class VideoClient(BaseMediaClient[Video]):
             Defaults to False
         :param dataset: Dataset to which to upload the video. If no dataset is
             passed, the video is uploaded to the training dataset
-        :param max_threads: Maximum number of threads to use for downloading. Defaults to 5.
-            Set to -1 to use all available threads.
         :return: MediaList containing all video's in the project
         """
         return self._upload_folder(
@@ -135,15 +127,9 @@ class VideoClient(BaseMediaClient[Video]):
             n_media=n_videos,
             skip_if_filename_exists=skip_if_filename_exists,
             dataset=dataset,
-            max_threads=max_threads,
         )
 
-    def download_all(
-        self,
-        path_to_folder: str,
-        append_video_uid: bool = False,
-        max_threads: int = 10,
-    ) -> None:
+    def download_all(self, path_to_folder: str, append_video_uid: bool = False) -> None:
         """
         Download all videos in a project to a folder on the local disk.
 
@@ -153,12 +139,8 @@ class VideoClient(BaseMediaClient[Video]):
             '{filename}_{video_id}'). If there are videos in the project with
             duplicate filename, this must be set to True to ensure all videos are
             downloaded. Otherwise videos with the same name will be skipped.
-        :param max_threads: Maximum number of threads to use for downloading. Defaults to 10.
-            Set to -1 to use all available threads.
         """
-        self._download_all(
-            path_to_folder, append_media_uid=append_video_uid, max_threads=max_threads
-        )
+        self._download_all(path_to_folder, append_media_uid=append_video_uid)
 
     def delete_videos(self, videos: Sequence[Video]) -> bool:
         """

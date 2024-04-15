@@ -16,13 +16,10 @@ import os
 
 BASE_TEST_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DUMMY_HOST = "dummy_host"
-CASSETTE_BASE_PATH = os.path.join(BASE_TEST_PATH, "fixtures", "cassettes")
-CASSETTE_PATH_KEY = "VERSIONED_CASSETTES_PATH"
+CASSETTE_PATH = os.path.join(BASE_TEST_PATH, "fixtures", "cassettes")
 RECORD_CASSETTE_KEY = "RECORD_CASSETTES_TEMPORARY_DIR"
 CASSETTE_EXTENSION = "cassette"
 PROJECT_PREFIX = "geti_sdk_test"
 DUMMY_USER = "dummy_user"
 DUMMY_PASSWORD = "dummy_password"  # nosec B105
 DUMMY_TOKEN = "dummy_token"  # nosec B105
-DUMMY_WORKSPACE_ID = "dummy_workspace_id"
-DUMMY_ORGANIZATION_ID = "dummy_organization_id"

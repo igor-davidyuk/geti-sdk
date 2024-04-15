@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions
 # and limitations under the License.
 
+import datetime
 import importlib.util
 import json
 import logging
@@ -25,35 +26,25 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import attr
 import numpy as np
-from openvino.model_api.adapters import OpenvinoAdapter, OVMSAdapter
-from openvino.model_api.models import Model as model_api_Model
-from openvino.runtime import Core
+from otx.algorithms.classification.utils import get_cls_inferencer_configuration
+from otx.api.entities.color import Color
+from otx.api.entities.label import Domain as OTEDomain
+from otx.api.entities.label import LabelEntity
+from otx.api.entities.label_schema import LabelGroup, LabelGroupType, LabelSchemaEntity
 
 from geti_sdk.data_models import OptimizedModel, Project, TaskConfiguration
-from geti_sdk.data_models.enums.domain import Domain
-from geti_sdk.data_models.label import Label
-from geti_sdk.data_models.label_group import LabelGroup, LabelGroupType
-from geti_sdk.data_models.label_schema import LabelSchema
-from geti_sdk.data_models.predictions import Prediction, ResultMedium
-from geti_sdk.deployment.predictions_postprocessing.results_converter.results_to_prediction_converter import (
-    ConverterFactory,
-    InferenceResultsToPredictionConverter,
-)
 from geti_sdk.http_session import GetiSession
 from geti_sdk.rest_converters import ConfigurationRESTConverter, ModelRESTConverter
 
 from .utils import (
     generate_ovms_model_address,
     generate_ovms_model_name,
-    get_package_version_from_requirements,
-    rgb_to_hex,
     target_device_is_ovms,
 )
 
 MODEL_DIR_NAME = "model"
 PYTHON_DIR_NAME = "python"
 WRAPPER_DIR_NAME = "model_wrappers"
-REQUIREMENTS_FILE_NAME = "requirements.txt"
 
 LABELS_CONFIG_KEY = "labels"
 LABEL_TREE_KEY = "label_tree"
@@ -89,7 +80,7 @@ class DeployedModel(OptimizedModel):
         self._needs_tempdir_deletion: bool = False
         self._tempdir_path: Optional[str] = None
         self._has_custom_model_wrappers: bool = False
-        self._label_schema: Optional[LabelSchema] = None
+        self._label_schema: Optional[LabelSchemaEntity] = None
 
         # Attributes related to model explainability
         self._saliency_key: Optional[str] = None
@@ -97,7 +88,7 @@ class DeployedModel(OptimizedModel):
         self._feature_vector_key: Optional[str] = None
         self._feature_vector_location: Optional[str] = None
 
-        self._converter: Optional[InferenceResultsToPredictionConverter] = None
+        self.openvino_model_parameters: Optional[Dict[str, Any]] = None
 
     @property
     def model_data_path(self) -> str:
@@ -173,15 +164,10 @@ class DeployedModel(OptimizedModel):
                     model_python_path = os.path.join(
                         os.path.dirname(source), PYTHON_DIR_NAME
                     )
-                python_dir_contents = (
-                    os.listdir(model_python_path)
-                    if os.path.exists(model_python_path)
-                    else []
-                )
+                python_dir_contents = os.listdir(model_python_path)
                 if WRAPPER_DIR_NAME in python_dir_contents:
                     self._has_custom_model_wrappers = True
-
-                self._model_python_path = os.path.join(source, PYTHON_DIR_NAME)
+                    self._model_python_path = os.path.join(source, PYTHON_DIR_NAME)
 
         elif isinstance(source, GetiSession):
             if self.base_url is None:
@@ -229,10 +215,24 @@ class DeployedModel(OptimizedModel):
         :return: OpenVino inference engine model that can be used to make predictions
             on images
         """
+        try:
+            from openvino.model_api.adapters import (
+                OpenvinoAdapter,
+                OVMSAdapter,
+                create_core,
+            )
+            from openvino.model_api.models import Model as OMZModel
+        except ImportError as error:
+            raise ValueError(
+                f"Unable to load inference model for {self}. Relevant OpenVINO "
+                f"packages were not found. Please make sure that OpenVINO is installed "
+                f"correctly."
+            ) from error
+
         if not target_device_is_ovms(device=device):
             # Run the model locally
             model_adapter = OpenvinoAdapter(
-                Core(),
+                create_core(),
                 model=os.path.join(self._model_data_path, "model.xml"),
                 weights_path=os.path.join(self._model_data_path, "model.bin"),
                 device=device,
@@ -267,26 +267,22 @@ class DeployedModel(OptimizedModel):
 
         # Load model configuration
         config_path = os.path.join(self._model_data_path, "config.json")
-        if not os.path.isfile(config_path):
+        if os.path.isfile(config_path):
+            with open(config_path, "r") as config_file:
+                configuration_json = json.load(config_file)
+            model_type = configuration_json.get("type_of_model")
+            parameters = configuration_json.get("model_parameters")
+            label_dictionary = parameters.pop(LABELS_CONFIG_KEY, None)
+            if configuration is not None:
+                configuration.update(parameters)
+            else:
+                configuration = parameters
+        else:
             raise ValueError(
                 f"Missing configuration file `config.json` for deployed model `{self}`,"
                 f" unable to load inference model."
             )
-        with open(config_path, "r") as config_file:
-            configuration_json = json.load(config_file)
-        model_type = configuration_json.get("type_of_model")
 
-        # Update model parameters
-        parameters = configuration_json.get("model_parameters")
-        if configuration is not None:
-            configuration.update(parameters)
-        else:
-            configuration = parameters
-
-        # Parse label schema
-        label_dictionary = configuration_json.get("model_parameters").pop(
-            LABELS_CONFIG_KEY, None
-        )
         self._parse_label_schema_from_dict(label_dictionary)
 
         # Create model wrapper with the loaded configuration
@@ -310,25 +306,17 @@ class DeployedModel(OptimizedModel):
                     f"{wrapper_module_path}."
                 ) from ex
 
-        model = model_api_Model.create_model(
+        if model_type == "otx_classification":
+            configuration = get_cls_inferencer_configuration(self.ote_label_schema)
+
+        model = OMZModel.create_model(
             model=model_adapter,
             model_type=model_type,
-            preload=True,
             configuration=configuration,
+            preload=True,
         )
+        self.openvino_model_parameters = configuration
         self._inference_model = model
-
-        # Load results to Prediction converter
-        otx_version = get_package_version_from_requirements(
-            requirements_path=os.path.join(
-                self._model_python_path, REQUIREMENTS_FILE_NAME
-            ),
-            package_name="otx",
-        )
-        use_legacy_converter = not otx_version.startswith("1.5")
-        self._converter = ConverterFactory.create_converter(
-            self.label_schema, configuration, use_legacy_converter=use_legacy_converter
-        )
 
         # TODO: This is a workaround to fix the issue that causes the output blob name
         #  to be unset. Remove this once it has been fixed on OTX/ModelAPI side
@@ -423,15 +411,14 @@ class DeployedModel(OptimizedModel):
             dst=new_model_data_path,
             dirs_exist_ok=True,
         )
-        if self._model_python_path is not None:
-            shutil.copytree(
-                src=self._model_python_path,
-                dst=new_model_python_path,
-                dirs_exist_ok=True,
-            )
-            self._model_python_path = new_model_python_path
+        shutil.copytree(
+            src=self._model_python_path,
+            dst=new_model_python_path,
+            dirs_exist_ok=True,
+        )
 
         self._model_data_path = new_model_data_path
+        self._model_python_path = new_model_python_path
 
         config_dict = ConfigurationRESTConverter.configuration_to_minimal_dict(
             self.hyper_parameters
@@ -447,7 +434,7 @@ class DeployedModel(OptimizedModel):
             json.dump(model_detail_dict, model_detail_file, indent=4)
         return True
 
-    def _preprocess(
+    def preprocess(
         self, image: np.ndarray
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, Tuple[int, int, int]]]:
         """
@@ -460,7 +447,7 @@ class DeployedModel(OptimizedModel):
         """
         return self._inference_model.preprocess(image)
 
-    def _postprocess(
+    def postprocess(
         self,
         inference_results: Dict[str, np.ndarray],
         metadata: Optional[Dict[str, Any]] = None,
@@ -482,7 +469,7 @@ class DeployedModel(OptimizedModel):
         """
         return self._inference_model.postprocess(inference_results, metadata)
 
-    def _postprocess_explain_outputs(
+    def postprocess_explain_outputs(
         self,
         inference_results: Dict[str, np.ndarray],
         metadata: Optional[Dict[str, Any]] = None,
@@ -575,7 +562,7 @@ class DeployedModel(OptimizedModel):
                 repr_vector = None
         return saliency_map, repr_vector
 
-    def infer(self, image: np.ndarray, explain: bool = False) -> Prediction:
+    def infer(self, preprocessed_image: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         """
         Run inference on an already preprocessed image.
 
@@ -583,38 +570,17 @@ class DeployedModel(OptimizedModel):
             image
         :return: Dictionary containing the model outputs
         """
-        preprocessed_image, metadata = self._preprocess(image)
-        # metadata is a dict with keys 'original_shape' and 'resized_shape'
-        inference_results: Dict[str, np.ndarray] = self._inference_model.infer_sync(
-            preprocessed_image
-        )
-        postprocessing_results = self._postprocess(inference_results, metadata=metadata)
-
-        prediction = self._converter.convert_to_prediction(
-            postprocessing_results, image_shape=metadata["original_shape"]
-        )
-
-        # Add optional explainability outputs
-        if explain:
-            saliency_map, repr_vector = self._postprocess_explain_outputs(
-                inference_results=inference_results, metadata=metadata
-            )
-            prediction.feature_vector = repr_vector
-            result_medium = ResultMedium(name="saliency map", type="saliency map")
-            result_medium.data = saliency_map
-            prediction.maps = [result_medium]
-
-        return prediction
+        return self._inference_model.infer_sync(preprocessed_image)
 
     @property
-    def label_schema(self) -> LabelSchema:
+    def ote_label_schema(self) -> LabelSchemaEntity:
         """
-        Return the LabelSchema for the model.
+        Return the OTE LabelSchema for the model.
 
         This requires the inference model to be loaded, getting this property while
         inference models are not loaded will raise a ValueError
 
-        :return: LabelSchema containing the SDK label schema for the model
+        :return: LabelSchemaEntity containing the OTE SDK label schema for the model
         """
         if self._label_schema is None:
             raise ValueError(
@@ -628,7 +594,7 @@ class DeployedModel(OptimizedModel):
     ) -> None:
         """
         Parse the dictionary contained in the model `config.json` file, and
-        generate an  LabelSchema from it.
+        generate an OTE LabelSchemaEntity from it.
 
         :param label_schema_dict: Dictionary containing the label schema information
             to parse
@@ -636,23 +602,19 @@ class DeployedModel(OptimizedModel):
         label_groups_list = label_schema_dict[LABEL_GROUPS_KEY]
         labels_dict = label_schema_dict[ALL_LABELS_KEY]
         for key, value in labels_dict.items():
-            color_tuple = tuple(
-                int(value["color"][key]) for key in ["red", "green", "blue"]
-            )
-            label_entity = Label(
-                name=value["name"],
-                color=rgb_to_hex(color_tuple),
-                group=None,
-                is_empty=value.get("is_empty", False),
-                hotkey=value["hotkey"],
-                domain=Domain[value["domain"]],
+            label_entity = LabelEntity(
                 id=value["_id"],
-                is_anomalous=value.get("is_anomalous", False),
+                name=value["name"],
+                hotkey=value["hotkey"],
+                domain=OTEDomain[value["domain"]],
+                color=Color(**value["color"]),
+                is_empty=value.get("is_empty", False),
+                creation_date=datetime.datetime.fromisoformat(value["creation_date"]),
             )
             labels_dict[key] = label_entity
         label_groups: List[LabelGroup] = []
         for group_dict in label_groups_list:
-            labels: List[Label] = [
+            labels: List[LabelEntity] = [
                 labels_dict[label_id] for label_id in group_dict["label_ids"]
             ]
             label_groups.append(
@@ -663,4 +625,4 @@ class DeployedModel(OptimizedModel):
                     labels=labels,
                 )
             )
-        self._label_schema = LabelSchema(label_groups=label_groups)
+        self._label_schema = LabelSchemaEntity(label_groups=label_groups)

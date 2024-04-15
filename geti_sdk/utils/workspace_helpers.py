@@ -35,12 +35,11 @@ def get_default_workspace_id(rest_session: GetiSession) -> str:
             f"Unexpected response from cluster: {workspaces}. Expected to receive a "
             f"dictionary containing workspace data."
         )
-    default_workspace_names = ["default", "default workspace"]
     default_workspace = next(
         (
             workspace
             for workspace in workspace_list
-            if workspace["name"].lower() in default_workspace_names
+            if workspace["name"] == "Default Workspace"
         )
     )
     return default_workspace["id"]

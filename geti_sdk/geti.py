@@ -232,7 +232,6 @@ class Geti:
         include_predictions: bool = False,
         include_active_models: bool = False,
         include_deployment: bool = False,
-        max_threads: int = 10,
     ) -> Project:
         """
         Download a project with name `project_name` to the local disk. All images,
@@ -299,8 +298,6 @@ class Geti:
         :param include_deployment: True to create and download a deployment for the
             project, that can be used for local inference with OpenVINO. Defaults to
             False.
-        :param max_threads: Maximum number of threads to use for downloading. Defaults to 10.
-            Set to -1 to use all available threads.
         :return: Project object, holding information obtained from the cluster
             regarding the downloaded project
         """
@@ -328,7 +325,6 @@ class Geti:
             image_client.download_all(
                 path_to_folder=target_folder,
                 append_image_uid=images.has_duplicate_filenames,
-                max_threads=max_threads,
             )
 
         # Download videos
@@ -340,16 +336,13 @@ class Geti:
             video_client.download_all(
                 path_to_folder=target_folder,
                 append_video_uid=videos.has_duplicate_filenames,
-                max_threads=max_threads,
             )
 
         # Download annotations
         annotation_client = AnnotationClient(
             session=self.session, project=project, workspace_id=self.workspace_id
         )
-        annotation_client.download_all_annotations(
-            path_to_folder=target_folder, max_threads=max_threads
-        )
+        annotation_client.download_all_annotations(path_to_folder=target_folder)
 
         # Download predictions
         prediction_client = PredictionClient(
@@ -396,7 +389,6 @@ class Geti:
         target_folder: str,
         project_name: Optional[str] = None,
         enable_auto_train: bool = True,
-        max_threads: int = 5,
     ) -> Project:
         """
         Upload a previously downloaded Intel® Geti™ project to the server. This method
@@ -428,8 +420,6 @@ class Geti:
             after all annotations have been uploaded. This will directly trigger a
             training round if the conditions for auto-training are met. False to leave
             auto-training disabled for all tasks. Defaults to True.
-        :param max_threads: Maximum number of threads to use for uploading. Defaults to 5.
-            Set to -1 to use all available threads.
         :return: Project object, holding information obtained from the cluster
             regarding the uploaded project
         """
@@ -462,12 +452,10 @@ class Geti:
         ):
             # Upload all media directly to the training dataset
             images = image_client.upload_folder(
-                path_to_folder=os.path.join(target_folder, "images"),
-                max_threads=max_threads,
+                path_to_folder=os.path.join(target_folder, "images")
             )
             videos = video_client.upload_folder(
-                path_to_folder=os.path.join(target_folder, "videos"),
-                max_threads=max_threads,
+                path_to_folder=os.path.join(target_folder, "videos")
             )
         else:
             # Make sure that media is uploaded to the correct dataset
@@ -480,7 +468,6 @@ class Geti:
                             target_folder, "images", dataset.name
                         ),
                         dataset=dataset,
-                        max_threads=max_threads,
                     )
                 )
                 videos.extend(
@@ -489,7 +476,6 @@ class Geti:
                             target_folder, "videos", dataset.name
                         ),
                         dataset=dataset,
-                        max_threads=max_threads,
                     )
                 )
 
@@ -565,7 +551,6 @@ class Geti:
         number_of_images_to_annotate: int = -1,
         enable_auto_train: bool = True,
         upload_videos: bool = False,
-        max_threads: int = 5,
     ) -> Project:
         """
         Create a single task project named `project_name` on the Intel® Geti™ server,
@@ -608,8 +593,6 @@ class Geti:
             auto-training disabled for all tasks. Defaults to True.
         :param upload_videos: True to upload any videos found in the `path_to_images`
             folder.
-        :param max_threads: Maximum number of threads to use for uploading. Defaults to 5.
-            Set to -1 to use all available threads.
         :return: Project object, holding information obtained from the cluster
             regarding the uploaded project
         """
@@ -650,20 +633,16 @@ class Geti:
                     image_names=annotation_reader.get_all_image_filepaths(),
                     n_images=number_of_images_to_upload,
                     image_names_as_full_paths=True,
-                    max_threads=max_threads,
                 )
             else:
                 images = image_client.upload_from_list(
                     path_to_folder=path_to_images,
                     image_names=annotation_reader.get_all_image_names(),
                     n_images=number_of_images_to_upload,
-                    max_threads=max_threads,
                 )
         else:
             images = image_client.upload_folder(
-                path_to_images,
-                n_images=number_of_images_to_upload,
-                max_threads=max_threads,
+                path_to_images, n_images=number_of_images_to_upload
             )
 
         if (
@@ -679,9 +658,7 @@ class Geti:
         videos: MediaList[Video] = MediaList([])
         if upload_videos:
             videos = video_client.upload_folder(
-                path_to_folder=path_to_images,
-                n_videos=-1,
-                max_threads=max_threads,
+                path_to_folder=path_to_images, n_videos=-1
             )
 
         # Set annotation reader task type
@@ -713,7 +690,6 @@ class Geti:
         number_of_images_to_upload: int = -1,
         number_of_images_to_annotate: int = -1,
         enable_auto_train: bool = True,
-        max_threads: int = 5,
     ) -> Project:
         """
         Create a single task project named `project_name` on the Intel® Geti™ cluster,
@@ -759,17 +735,13 @@ class Geti:
             after all annotations have been uploaded. This will directly trigger a
             training round if the conditions for auto-training are met. False to leave
             auto-training disabled for all tasks. Defaults to True.
-        :param max_threads: Maximum number of threads to use for uploading. Defaults to 5.
-            Set to -1 to use all available threads.
         :return: Project object, holding information obtained from the cluster
             regarding the uploaded project
         """
         labels_per_task = [
-            (
-                entry.get_all_label_names()
-                if isinstance(entry, AnnotationReader)
-                else entry
-            )
+            entry.get_all_label_names()
+            if isinstance(entry, AnnotationReader)
+            else entry
             for entry in label_source_per_task
         ]
         annotation_readers_per_task = [
@@ -805,13 +777,10 @@ class Geti:
                 path_to_folder=path_to_images,
                 image_names=first_task_reader.get_all_image_names(),
                 n_images=number_of_images_to_upload,
-                max_threads=max_threads,
             )
         else:
             images = image_client.upload_folder(
-                path_to_images,
-                n_images=number_of_images_to_upload,
-                max_threads=max_threads,
+                path_to_images, n_images=number_of_images_to_upload
             )
 
         if (
@@ -939,7 +908,6 @@ class Geti:
         output_folder: Optional[str] = None,
         delete_after_prediction: bool = False,
         skip_if_filename_exists: bool = False,
-        max_threads: int = 5,
     ) -> bool:
         """
         Upload a folder with media (images, videos or both) from local disk at path
@@ -963,8 +931,6 @@ class Geti:
         :param skip_if_filename_exists: Set to True to skip uploading of an image (or
             video) if an image (or video) with the same filename already exists in the
             project. Defaults to False
-        :param max_threads: Maximum number of threads to use for uploading. Defaults to 5.
-            Set to -1 to use all available threads.
         :return: True if all media was uploaded, and predictions for all media were
             successfully downloaded. False otherwise
         """
@@ -983,9 +949,7 @@ class Geti:
             session=self.session, workspace_id=self.workspace_id, project=project
         )
         images = image_client.upload_folder(
-            path_to_folder=media_folder,
-            skip_if_filename_exists=skip_if_filename_exists,
-            max_threads=max_threads,
+            path_to_folder=media_folder, skip_if_filename_exists=skip_if_filename_exists
         )
 
         # Upload videos
@@ -993,9 +957,7 @@ class Geti:
             session=self.session, workspace_id=self.workspace_id, project=project
         )
         videos = video_client.upload_folder(
-            path_to_folder=media_folder,
-            skip_if_filename_exists=skip_if_filename_exists,
-            max_threads=max_threads,
+            path_to_folder=media_folder, skip_if_filename_exists=skip_if_filename_exists
         )
 
         prediction_client = PredictionClient(
