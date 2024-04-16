@@ -15,4 +15,6 @@ jobs:
       
     - name: log results
       run: |
+        echo "Inside the action body"
         echo steps.label-the-PR.outputs.all-labels
+        echo ${{ steps.label-the-PR.outputs.all-labels }}
