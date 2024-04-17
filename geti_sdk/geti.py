@@ -171,6 +171,7 @@ class Geti:
                     "`password` or `token` must be specified."
                 )
         else:
+
             if host is not None:
                 warnings.warn(
                     "Both `host` and `server_config` were passed to `Geti`, ignoring "
