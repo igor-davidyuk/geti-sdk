@@ -2,6 +2,11 @@ name: Conditional Workflow
 
 on:
   workflow_dispatch:  # run on request (no need for PR)  
+  pull_request:
+    branches:
+      - main
+    types: 
+      - labeled
 
 jobs:
 
@@ -10,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - id: label-the-PR
-      uses: actions/labeler@v5
+    # - id: label-the-PR
+    #   uses: actions/labeler@v5
     # - name: Get PR labels
     #   id: pr-labels
     #   uses: joerick/pr-labels-action@v1.0.8
@@ -20,4 +25,4 @@ jobs:
       run: |
         echo "Inside the action body"
         echo steps.label-the-PR.outputs.all-labels
-        echo ${{ steps.label-the-PR.outputs.all-labels }}
+        echo ${{ github.event.pull_request.labels }}
