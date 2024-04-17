@@ -5,7 +5,7 @@ on:
   pull_request:
     # branches:
     #   - main
-    types: [labeled]
+    # types: [labeled]
 
 jobs:
 
@@ -25,3 +25,4 @@ jobs:
         echo "Inside the action body"
         echo steps.label-the-PR.outputs.all-labels
         echo ${{ github.event.pull_request.labels }}
+        echo ${{ github.event.pull_request.labels.*.name }}
