@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # - id: label-the-PR
-    #   uses: actions/labeler@v5
-    - name: Get PR labels
-      id: pr-labels
-      uses: joerick/pr-labels-action@v1.0.8
+    - id: label-the-PR
+      uses: actions/labeler@v5
+    # - name: Get PR labels
+    #   id: pr-labels
+    #   uses: joerick/pr-labels-action@v1.0.8
 
     - name: log results
       run: |
