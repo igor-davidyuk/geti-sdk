@@ -26,6 +26,6 @@ jobs:
         echo steps.label-the-PR.outputs.all-labels
         echo ${{ github.event.pull_request.labels }}
         
-        for label in ${{ github.event.pull_request.labels.*.name }} do
+        for label in ${{ github.event.pull_request.labels.*.name }}; do
           echo "Processing $label"
         done
