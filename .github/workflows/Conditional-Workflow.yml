@@ -2,6 +2,11 @@ name: Conditional Workflow
 
 on:
   workflow_dispatch:  # run on request (no need for PR)  
+  pull_request:
+    branches:
+      - main
+    types: 
+      - labeled
 
 jobs:
 
