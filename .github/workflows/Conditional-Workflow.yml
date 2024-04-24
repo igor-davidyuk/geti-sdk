@@ -25,7 +25,7 @@ jobs:
         echo "Inside the action body"
         echo ${{ github.event_name }}
         echo ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }}
-        
+
         echo steps.label-the-PR.outputs.all-labels
         echo ${{ github.event.pull_request.labels }}
 
