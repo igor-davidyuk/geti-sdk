@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # - id: label-the-PR
-    #   uses: actions/labeler@v5
+    - id: label-the-PR
+      uses: actions/labeler@v5
     # - name: Get PR labels
     #   id: pr-labels
     #   uses: joerick/pr-labels-action@v1.0.8
@@ -24,10 +24,8 @@ jobs:
       run: |
         echo "Inside the action body"
         echo ${{ github.event_name }}
+        echo ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }}
         
         echo steps.label-the-PR.outputs.all-labels
         echo ${{ github.event.pull_request.labels }}
-        
-        for label in ${{ toJSON(github.event.pull_request.labels.*.name) }}; do
-          echo "Processing $label"
-        done
+
