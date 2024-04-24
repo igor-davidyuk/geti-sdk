@@ -23,6 +23,8 @@ jobs:
     - name: log results
       run: |
         echo "Inside the action body"
+        echo ${{ github.event_name }}
+        
         echo steps.label-the-PR.outputs.all-labels
         echo ${{ github.event.pull_request.labels }}
         
