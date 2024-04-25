@@ -21,10 +21,27 @@ jobs:
     #   uses: joerick/pr-labels-action@v1.0.8
 
     - name: log results
+      if: github.event_name == 'pull_request'
       run: |
         echo "Inside the action body"
-        echo ${{ github.event_name }}
-        echo ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }}
+        # echo ${{ github.event_name }}
+        # echo ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }}
+
+                
+        export TESTS_TARGET=""
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }} ]]; then
+          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/test_geti.py "
+        fi
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Rest-Clients') }} ]]; then
+          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/rest_clients/ "
+        fi
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'HTTP-Session') }} ]]; then
+          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/http_session/ "
+        fi
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Geti-Utils') }} ]]; then
+          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/utils/ "
+        fi
+        echo $TESTS_TARGET
 
         echo steps.label-the-PR.outputs.all-labels
         echo ${{ github.event.pull_request.labels }}
