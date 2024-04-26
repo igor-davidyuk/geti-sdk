@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions
 # and limitations under the License.
+
 import logging
 import os
 import sys
@@ -164,12 +165,14 @@ class Geti:
                     proxies=proxies,
                     has_valid_certificate=verify_certificate,
                 )
+
             else:
                 raise TypeError(
                     "__init__ missing required keyword arguments: Either `username` and "
                     "`password` or `token` must be specified."
                 )
         else:
+
             if host is not None:
                 warnings.warn(
                     "Both `host` and `server_config` were passed to `Geti`, ignoring "
