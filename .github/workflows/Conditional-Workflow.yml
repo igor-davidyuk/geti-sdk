@@ -27,23 +27,19 @@ jobs:
         # echo ${{ github.event_name }}
         # echo ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }}
 
-                
         export TESTS_TARGET=""
-        declare -A labels_to_tests=(
-          ["geti-object"]="tests/pre-merge/integration/test_geti.py"
-          ["Rest-Clients"]="tests/pre-merge/integration/rest_clients/"
-          ["HTTP-Session"]="tests/pre-merge/integration/http_session/"
-          ["Geti-Utils"]="tests/pre-merge/integration/utils/"
-        )
-
-        for label in "${!labels_to_tests[@]}"; do
-          # echo "LABEL=label" >> "$GITHUB_ENV"
-          echo "label var" $label
-          echo "gh var" ${{ env.label }}
-          if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, env.LABEL) }} ]]; then
-            export TESTS_TARGET="${labels_to_tests[$label]} "$TESTS_TARGET
-          fi
-        done
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }} ]]; then
+          export TESTS_TARGET="tests/pre-merge/integration/test_geti.py $TESTS_TARGET"
+        fi
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Rest-Clients') }} ]]; then
+          export TESTS_TARGET="tests/pre-merge/integration/rest_clients/ $TESTS_TARGET"
+        fi
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'HTTP-Session') }} ]]; then
+          export TESTS_TARGET="tests/pre-merge/integration/http_session/ $TESTS_TARGET"
+        fi
+        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Geti-Utils') }} ]]; then
+          export TESTS_TARGET="tests/pre-merge/integration/utils/ $TESTS_TARGET"
+        fi
         echo $TESTS_TARGET
 
         echo steps.label-the-PR.outputs.all-labels
