@@ -29,18 +29,18 @@ jobs:
 
                 
         export TESTS_TARGET=""
-        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }} ]]; then
-          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/test_geti.py "
-        fi
-        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Rest-Clients') }} ]]; then
-          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/rest_clients/ "
-        fi
-        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'HTTP-Session') }} ]]; then
-          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/http_session/ "
-        fi
-        if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Geti-Utils') }} ]]; then
-          export TESTS_TARGET=$TESTS_TARGET:"tests/pre-merge/integration/utils/ "
-        fi
+        declare -A labels_to_tests=(
+          ["geti-object"]="tests/pre-merge/integration/test_geti.py"
+          ["Rest-Clients"]="tests/pre-merge/integration/rest_clients/"
+          ["HTTP-Session"]="tests/pre-merge/integration/http_session/"
+          ["Geti-Utils"]="tests/pre-merge/integration/utils/"
+        )
+
+        for label in "${!labels_to_tests[@]}"; do
+          if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, label) }} ]]; then
+            export TESTS_TARGET="${labels_to_tests[$label]}":$TESTS_TARGET
+          fi
+        done
         echo $TESTS_TARGET
 
         echo steps.label-the-PR.outputs.all-labels
