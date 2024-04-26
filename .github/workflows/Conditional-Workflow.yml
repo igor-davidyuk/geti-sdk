@@ -25,7 +25,7 @@ jobs:
       run: |
         echo "Inside the action body"
         # echo ${{ github.event_name }}
-        # echo all lbels ${{ steps.label-the-PR.outputs.all-labels }}
+        echo all lbels ${{ steps.label-the-PR.outputs.all-labels }}
 
         export TESTS_TARGET=""
         if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }} ]]; then
