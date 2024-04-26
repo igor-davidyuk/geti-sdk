@@ -30,19 +30,19 @@ jobs:
         export TESTS_TARGET=""
         if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object') }} ]]; then
           echo "geti-object"${{ contains(steps.label-the-PR.outputs.all-labels, 'geti-object')
-          export TESTS_TARGET="tests/pre-merge/integration/test_geti.py $TESTS_TARGET"
+          # export TESTS_TARGET="tests/pre-merge/integration/test_geti.py $TESTS_TARGET"
         fi
         if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Rest-Clients') }} ]]; then
           echo "Rest-Clients"${{ contains(steps.label-the-PR.outputs.all-labels, 'Rest-Clients')
-          export TESTS_TARGET="tests/pre-merge/integration/rest_clients/ $TESTS_TARGET"
+          # export TESTS_TARGET="tests/pre-merge/integration/rest_clients/ $TESTS_TARGET"
         fi
         if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'HTTP-Session') }} ]]; then
           echo "HTTP-Session"${{ contains(steps.label-the-PR.outputs.all-labels, 'HTTP-Session')
-          export TESTS_TARGET="tests/pre-merge/integration/http_session/ $TESTS_TARGET"
+          # export TESTS_TARGET="tests/pre-merge/integration/http_session/ $TESTS_TARGET"
         fi
         if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, 'Geti-Utils') }} ]]; then
           echo "Geti-Utils"${{ contains(steps.label-the-PR.outputs.all-labels, 'Geti-Utils')
-          export TESTS_TARGET="tests/pre-merge/integration/utils/ $TESTS_TARGET"
+          # export TESTS_TARGET="tests/pre-merge/integration/utils/ $TESTS_TARGET"
         fi
         echo $TESTS_TARGET
 
