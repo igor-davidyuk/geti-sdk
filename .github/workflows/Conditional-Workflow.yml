@@ -39,7 +39,7 @@ jobs:
         for label in "${!labels_to_tests[@]}"; do
           echo "LABEL=$label" >> "$GITHUB_ENV"
           if [[ ${{ contains(steps.label-the-PR.outputs.all-labels, env.LABEL) }} ]]; then
-            echo env.LABEL
+            echo ${{ env.LABEL }}
             export TESTS_TARGET="${labels_to_tests[$label]} "$TESTS_TARGET
           fi
         done
